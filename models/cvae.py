@@ -105,18 +105,18 @@ class cVAE(nn.Module):
         z = self.sampling(mean, logvar)
         return self.decoder(z, y), mean, logvar
     
-    def generate(self, class_idx):
-        if (type(class_idx) is int):
-            class_idx = torch.tensor(class_idx)
-        class_idx = class_idx.to(device)
-        if (len(class_idx.shape) == 0):
+    def generate(self, y):
+        if (type(y) is int):
+            y = torch.tensor(y)
+        y = y.to(device)
+        if (len(y.shape) == 0):
             batch_size = None
-            class_idx = class_idx.unsqueeze(0)
+            y = y.unsqueeze(0)
             z = torch.randn((1, self.dim)).to(device)
         else:
-            batch_size = class_idx.shape[0]
+            batch_size = y.shape[0]
             z = torch.randn((batch_size, self.dim)).to(device) 
-        y = self.label_embedding(class_idx)
+        #y = self.label_embedding(class_idx)
         res = self.decoder(z, y)
         if not batch_size:
             res = res.squeeze(0)
