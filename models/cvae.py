@@ -100,7 +100,7 @@ class cVAE(nn.Module):
         return mean + eps * sigma
     
     def forward(self, x, y):
-        y = self.label_embedding(y)
+        #y = self.label_embedding(y)
         mean, logvar = self.encoder(x, y)
         z = self.sampling(mean, logvar)
         return self.decoder(z, y), mean, logvar

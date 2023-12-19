@@ -1,10 +1,9 @@
 import torch
-import numpy as np
-import torch.nn.functional as F
 import torchvision
 import os, time, tqdm
 from models.cvae import loss, cVAE
 from utils import EarlyStop
+from datasets import celeba
 
 ############## loading data ###################
 
@@ -15,19 +14,20 @@ def crop(x, low, high):
 
 transform = torchvision.transforms.Compose([
     torchvision.transforms.ToTensor(),
-    torchvision.transforms.Lambda(lambda x: crop(x, 0., 1.))
+    torchvision.transforms.Lambda(lambda x: crop(x, 0., 1.)),
+    torchvision.transforms.Resize((109, 89), antialias=True)   # (3, 218, 178) -> (3, 109, 89)
 ])
 
-train_data = torchvision.datasets.MNIST(root='../../Datasets', train=True, download=True, transform=transform)
-train_iter = torch.utils.data.DataLoader(train_data, batch_size=512, shuffle=True)
+train_data = torchvision.datasets.celeba.CelebA(root='D:\Datasets', download=False, transform=transform)
+train_iter = torch.utils.data.DataLoader(train_data, batch_size=128, shuffle=True)
 
 ############## loading models ###################
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-net = cVAE((1, 28, 28), 10, nhid = 2, ncond = 16)
+net = cVAE((3, 109, 89), 40, nhid = 2, ncond = 40)
 net.to(device)
-print(net)
+#print(net)
 save_name = "cVAE.pt"
 
 ############### training #########################
