@@ -102,11 +102,11 @@ class CelebA(VisionDataset):
             "all": None,
         }
         split_ = split_map[verify_str_arg(split.lower(), "split", ("train", "valid", "test", "all"))]
-        splits = self._load_csv("list_eval_partition.txt")
+        splits = self._load_csv("list_eval_partition.txt", delimiter=" ", header=None)
         identity = self._load_csv("identity_CelebA.txt", delimiter=" ", header=None)
-        bbox = self._load_csv("list_bbox_celeba.txt")
-        landmarks_align = self._load_csv("list_landmarks_align_celeba.txt")
-        attr = self._load_csv("list_attr_celeba.txt")
+        bbox = self._load_csv("list_bbox_celeba.txt", delimiter=" ", header=1)
+        landmarks_align = self._load_csv("list_landmarks_align_celeba.txt", delimiter=" ", header=1)
+        attr = self._load_csv("list_attr_celeba.txt", delimiter=" ", header=1)
 
         mask = slice(None) if split_ is None else (splits.data == split_).squeeze()
         if mask == slice(None):  # if split == "all"
@@ -171,7 +171,8 @@ class CelebA(VisionDataset):
         target: Any = []
         for t in self.target_type:
             if t == "attr":
-                target.append(self.attr[index, :])
+                smiling_index = self.attr_names.index("Smiling")
+                target.append(self.attr[index, smiling_index])
             elif t == "identity":
                 target.append(self.identity[index, 0])
             elif t == "bbox":
