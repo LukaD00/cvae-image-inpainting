@@ -59,16 +59,36 @@ class Encoder(nn.Module):
 class Decoder(nn.Module):
     def __init__(self, shape, nhid=16, ncond=0):
         super(Decoder, self).__init__()
-        c, w, h = shape
         self.shape = shape
-        self.decode = nn.Sequential(MLP([nhid + ncond, 64, 128, 256, c * w * h], last_activation=False), nn.Sigmoid())
+
+        self.latent_size = nhid + ncond
+        self.main = nn.Sequential(
+            nn.ConvTranspose2d(self.latent_size, 512, 4, 1, 0),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.ConvTranspose2d(512, 256, 4, 2, 1),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.ConvTranspose2d(256, 128, 4, 2, 1),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.ConvTranspose2d(128, 64, 4, 2, 1),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.ConvTranspose2d(64, 3, 4, 2, 1),
+            nn.Sigmoid(),
+        )
 
     def forward(self, z, y=None):
-        c, w, h = self.shape
-        if (y is None):
-            return self.decode(z).view(-1, c, w, h)
-        else:
-            return self.decode(torch.cat((z, y), dim=1)).view(-1, c, w, h)
+        if y is not None:
+            z = torch.cat((z, y), dim=1)
+
+        z = z.view(-1, self.latent_size, 1, 1)
+        return self.main(z)
 
 
 class cVAE(nn.Module):
@@ -108,10 +128,10 @@ class cVAE(nn.Module):
         return res
 
 
-BCE_loss = nn.BCELoss()
+BCE_loss = nn.BCELoss(reduction="sum")
 
 
 def loss(X, X_hat, mean, logvar):
     reconstruction_loss = BCE_loss(X_hat, X)
-    KL_divergence = torch.mean(-1 - logvar + torch.exp(logvar) + mean ** 2)
+    KL_divergence = torch.sum(-1 - logvar + torch.exp(logvar) + mean ** 2)
     return reconstruction_loss + 0.5 * KL_divergence

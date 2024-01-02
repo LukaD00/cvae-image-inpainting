@@ -5,12 +5,12 @@ import tqdm
 
 from datasets import celeba
 from models.cvae import cVAE
-from models.inpaint import DeleteRandomRectangle, Inpaint
+from datasets.inpainting import DeleteRandomRectangle
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter(log_dir="/home/rjurisic/Desktop/FER/DUBUCE/runs/finetune")
+writer = SummaryWriter(log_dir="/home/rjurisic/Desktop/FER/DUBUCE/runs/finetune_convolution")
 
-BCE_loss = nn.BCELoss()
+BCE_loss = nn.BCELoss(reduction='sum')
 delete_rectangle = DeleteRandomRectangle()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 batch_size = 16
@@ -24,7 +24,8 @@ def crop(x, low, high):
 transform = torchvision.transforms.Compose([
     torchvision.transforms.ToTensor(),
     torchvision.transforms.Lambda(lambda x: crop(x, 0., 1.)),
-    torchvision.transforms.Resize((109, 89), antialias=True)  # (3, 218, 178) -> (3, 109, 89)
+    torchvision.transforms.Resize((109, 89), antialias=True),  # (3, 218, 178) -> (3, 109, 89)
+    torchvision.transforms.CenterCrop((64, 64)),
 ])
 
 train_data = celeba.CelebA(root='/home/rjurisic/Desktop/FER/DUBUCE', download=False, transform=transform)
@@ -36,67 +37,63 @@ class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
 
-        self.main_convolution = nn.Sequential(
-            nn.Conv2d(3, 128, kernel_size=4),
+        self.main = nn.Sequential(
+            nn.Conv2d(3, 64, 4, 2, 1),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(64, 128, 4, 2, 1),
             nn.BatchNorm2d(128),
-            nn.LeakyReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
 
-            nn.Conv2d(128, 512, kernel_size=4),
+            nn.Conv2d(128, 256, 4, 2, 1),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Conv2d(256, 512, 4, 2, 1),
             nn.BatchNorm2d(512),
-            nn.LeakyReLU(),
+            nn.LeakyReLU(0.2, inplace=True),
 
-            # nn.Conv2d(512, 1024, kernel_size=3),
-            # nn.BatchNorm2d(1024),
-            # nn.LeakyReLU(),
-        )
-
-        self.main_dense = nn.Sequential(
-            nn.Linear(512, 128),
-            nn.LeakyReLU(),
-
-            nn.Linear(128, 1),
+            nn.Conv2d(512, 1, 4, 1, 0),
             nn.Sigmoid(),
         )
 
     def forward(self, x):
-        features = self.main_convolution(x)
-        maps = torch.mean(features, (-1, -2))
+        out = self.main(x)
 
-        return self.main_dense(maps)
+        return out.squeeze()
 
 
-def train_discriminator(batch, attr, discriminator, generator, optimizer, global_step):
-    discriminator.train()
-    generator.eval()
-
+def train_discriminator(batch, batch_cropped, attr, discriminator, generator, optimizer, global_step):
     with torch.no_grad():
         batch_size = batch.size(0)
-        cropped, mask = delete_rectangle(batch)
-        generated, _, _ = generator(cropped, mask, attr)
+        generated, _, _ = generator(batch_cropped, attr)
 
-    generated_loss = BCE_loss(discriminator(generated).squeeze(), torch.zeros(batch_size, device=device))
-    real_loss = BCE_loss(discriminator(batch).squeeze(), torch.ones(batch_size, device=device))
-    total_loss = (generated_loss + real_loss) / 2
+    loss_item = 0
 
     optimizer.zero_grad()
-    total_loss.backward()
+    real_loss = BCE_loss(discriminator(batch), torch.ones(batch_size, device=device))
+    real_loss.backward()
     optimizer.step()
+    loss_item += real_loss.item()
 
-    writer.add_scalar("discriminator_loss", total_loss.cpu().item(), global_step=global_step)
+    optimizer.zero_grad()
+    generated_loss = BCE_loss(discriminator(generated), torch.zeros(batch_size, device=device))
+    generated_loss.backward()
+    optimizer.step()
+    loss_item += generated_loss.item()
+
+    writer.add_scalar("discriminator_loss", loss_item, global_step=global_step)
 
 
-def train_generator(batch, attr, discriminator, generator, optimizer, global_step):
-    discriminator.eval()
-    generator.train()
+def train_generator(batch, batch_cropped, attr, discriminator, generator, optimizer, global_step):
+    generated, mean, logvar = generator(batch_cropped, attr)
 
-    cropped, mask = delete_rectangle(batch)
-    generated, mean, logvar = generator(cropped, mask, attr)
-
-    discriminator_loss = BCE_loss(discriminator(generated).squeeze(), torch.ones(batch.size(0), device=device))
-    KL_divergence_loss = torch.mean(-1 - logvar + torch.exp(logvar) + mean ** 2)
+    discriminator_loss = BCE_loss(discriminator(generated), torch.ones(batch.size(0), device=device))
+    KL_divergence_loss = torch.sum(-1 - logvar + torch.exp(logvar) + mean ** 2)
     reconstruction_loss = BCE_loss(generated, batch)
 
-    total_loss = 4 * reconstruction_loss + 0.5 * KL_divergence_loss + discriminator_loss
+    total_loss = 2 * reconstruction_loss + 0.5 * KL_divergence_loss + 10 * discriminator_loss
 
     optimizer.zero_grad()
     total_loss.backward()
@@ -105,41 +102,47 @@ def train_generator(batch, attr, discriminator, generator, optimizer, global_ste
     writer.add_scalar("generator_loss", total_loss.cpu().item(), global_step=global_step)
 
 
-def save_models(generator, discriminator):
-    torch.save({"net": discriminator.state_dict()}, "discriminator.pt")
-    torch.save({"net": generator.state_dict()},"generator_fineTuned.pt")
+def save_models(generator, discriminator, epoch):
+    torch.save({"net": discriminator.state_dict()}, f"discriminator_{epoch}.pt")
+    torch.save({"net": generator.state_dict()},f"generator_fineTuned_{epoch}.pt")
 
 
 def main_train_like_a_gan():
-    cvae = cVAE((3, 109, 89), 2, nhid=64, ncond=8)
+    cvae = cVAE((3, 64, 64), 2, nhid=100, ncond=16)
     checkpoint = torch.load("../cVAE.pt", map_location=device)
     cvae.load_state_dict(checkpoint["net"])
     cvae.to(device)
 
     discriminator = Discriminator().to(device)
-    generator = Inpaint(cvae).to(device)
+    generator = cvae.to(device)
+
+    discriminator.train()
+    generator.train()
 
     discriminator_optimizer = torch.optim.Adam(discriminator.parameters(), lr=0.01, weight_decay=0.0001)
     generator_optimizer = torch.optim.Adam(generator.parameters(), lr=0.01, weight_decay=0.0001)
 
-    epochs = 1
+    epochs = 5
     iteration = 0
     discriminator_warmup_iterations = len(train_data) / batch_size * 0.05
     for epoch in range(epochs):
         for X, y in tqdm.tqdm(train_iter, ncols=50):
             iteration += 1
 
+            X_cropped, _ = delete_rectangle(X)
+            X_cropped = X_cropped.to(device)
             X = X.to(device)
             y = y.to(device)
 
-            train_discriminator(X, y, discriminator, generator, discriminator_optimizer, iteration)
+            train_discriminator(X, X_cropped, y, discriminator, generator, discriminator_optimizer, iteration)
 
             if iteration < discriminator_warmup_iterations:
                 continue
 
-            train_generator(X, y, discriminator, generator, generator_optimizer, iteration)
+            train_generator(X, X_cropped, y, discriminator, generator, generator_optimizer, iteration)
 
-    save_models(generator, discriminator)
+        save_models(generator, discriminator, epoch)
+
     writer.close()
 
 

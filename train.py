@@ -19,7 +19,8 @@ def crop(x, low, high):
 transform = torchvision.transforms.Compose([
     torchvision.transforms.ToTensor(),
     torchvision.transforms.Lambda(lambda x: crop(x, 0., 1.)),
-    torchvision.transforms.Resize((109, 89), antialias=True)  # (3, 218, 178) -> (3, 109, 89)
+    torchvision.transforms.Resize((109, 89), antialias=True),  # (3, 218, 178) -> (3, 109, 89)
+    torchvision.transforms.CenterCrop((64, 64)),
 ])
 
 train_data = celeba.CelebA(root='/home/rjurisic/Desktop/FER/DUBUCE', download=False, transform=transform)
@@ -29,7 +30,7 @@ train_iter = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-net = cVAE((3, 109, 89), 2, nhid=64, ncond=8)
+net = cVAE((3, 64, 64), 2, nhid=100, ncond=16)
 net.to(device)
 # print(net)
 save_name = "cVAE.pt"
