@@ -1,12 +1,14 @@
 import torch
 import torchvision
 import os, time, tqdm
+
+from datasets.inpainting import DeleteRandomRectangle
 from models.cvae import loss, cVAE
 from utils import EarlyStop
 from datasets import celeba
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter(log_dir="/home/rjurisic/Desktop/FER/DUBUCE/runs/train_baseline/short/")
+writer = SummaryWriter(log_dir="/home/rjurisic/Desktop/FER/DUBUCE/runs/train_baseline/poisoned_input/")
 
 ############## loading data ###################
 
@@ -25,6 +27,7 @@ transform = torchvision.transforms.Compose([
 
 train_data = celeba.CelebA(root='/home/rjurisic/Desktop/FER/DUBUCE', download=False, transform=transform)
 train_iter = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True)
+delete_rectangle = DeleteRandomRectangle()
 
 ############## loading models ###################
 
@@ -57,7 +60,7 @@ if os.path.exists(save_name):
         for g in optimizer.param_groups:
             g['lr'] = lr
 
-max_epochs = 1
+max_epochs = 7
 early_stop = EarlyStop(patience=20, save_name=save_name)
 net = net.to(device)
 
@@ -67,9 +70,11 @@ for epoch in range(max_epochs):
 
     train_loss, n, start = 0.0, 0, time.time()
     for X, y in tqdm.tqdm(train_iter, ncols=50):
+        X_cropped, _ = delete_rectangle(X)
+        X_cropped = X_cropped.to(device)
         X = X.to(device)
         y = y.to(device)
-        X_hat, mean, logvar = net(X, y)
+        X_hat, mean, logvar = net(X_cropped, y)
 
         l = loss(X, X_hat, mean, logvar).to(device)
         optimizer.zero_grad()

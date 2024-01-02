@@ -13,7 +13,7 @@ writer = SummaryWriter(log_dir="/home/rjurisic/Desktop/FER/DUBUCE/runs/finetune_
 BCE_loss = nn.BCELoss(reduction='sum')
 delete_rectangle = DeleteRandomRectangle()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-batch_size = 16
+batch_size = 32
 
 def crop(x, low, high):
     x[x <= low] = low
