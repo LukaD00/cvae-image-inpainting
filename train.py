@@ -8,7 +8,7 @@ from utils import EarlyStop
 from datasets import celeba
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter(log_dir="/home/rjurisic/Desktop/FER/DUBUCE/runs/train_baseline/poisoned_input/")
+writer = SummaryWriter()
 
 ############## loading data ###################
 
@@ -17,7 +17,6 @@ def crop(x, low, high):
     x[x >= high] = high
     return x
 
-
 transform = torchvision.transforms.Compose([
     torchvision.transforms.ToTensor(),
     torchvision.transforms.Lambda(lambda x: crop(x, 0., 1.)),
@@ -25,7 +24,7 @@ transform = torchvision.transforms.Compose([
     torchvision.transforms.CenterCrop((64, 64)),
 ])
 
-train_data = celeba.CelebA(root='/home/rjurisic/Desktop/FER/DUBUCE', download=False, transform=transform)
+train_data = celeba.CelebA(root='D:/Datasets', download=False, transform=transform, target_attributes="Bald")
 train_iter = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True)
 delete_rectangle = DeleteRandomRectangle()
 

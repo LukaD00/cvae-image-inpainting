@@ -28,7 +28,7 @@ transform = torchvision.transforms.Compose([
     torchvision.transforms.CenterCrop((64, 64)),
 ])
 
-train_data = celeba.CelebA(root='/home/rjurisic/Desktop/FER/DUBUCE', download=False, transform=transform)
+train_data = celeba.CelebA(root='D:/Datasets', download=False, transform=transform)
 train_iter = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
 
 
