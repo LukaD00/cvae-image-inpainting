@@ -8,7 +8,7 @@ from models.cvae import cVAE
 from datasets.inpainting import DeleteRandomRectangle
 from torch.utils.tensorboard import SummaryWriter
 
-writer = SummaryWriter(log_dir="/home/rjurisic/Desktop/FER/DUBUCE/runs/finetune_convolution")
+writer = SummaryWriter()
 
 BCE_loss = nn.BCELoss(reduction='sum')
 delete_rectangle = DeleteRandomRectangle()
@@ -28,7 +28,7 @@ transform = torchvision.transforms.Compose([
     torchvision.transforms.CenterCrop((64, 64)),
 ])
 
-train_data = celeba.CelebA(root='D:/Datasets', download=False, transform=transform)
+train_data = celeba.CelebA(root='C:/Datasets', download=False, transform=transform)
 train_iter = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
 
 
@@ -103,13 +103,13 @@ def train_generator(batch, batch_cropped, attr, discriminator, generator, optimi
 
 
 def save_models(generator, discriminator, epoch):
-    torch.save({"net": discriminator.state_dict()}, f"discriminator_{epoch}.pt")
-    torch.save({"net": generator.state_dict()},f"generator_fineTuned_{epoch}.pt")
+    torch.save({"net": discriminator.state_dict()}, f"./models/weights/discriminator.pt")
+    torch.save({"net": generator.state_dict()},f"./models/weights/cVAE_finetuned.pt")
 
 
 def main_train_like_a_gan():
     cvae = cVAE((3, 64, 64), 2, nhid=100, ncond=16)
-    checkpoint = torch.load("../cVAE.pt", map_location=device)
+    checkpoint = torch.load("./cVAE.pt", map_location=device)
     cvae.load_state_dict(checkpoint["net"])
     cvae.to(device)
 

@@ -8,6 +8,7 @@ from utils import EarlyStop
 from datasets import celeba
 from torch.utils.tensorboard import SummaryWriter
 
+
 writer = SummaryWriter()
 
 ############## loading data ###################
@@ -24,8 +25,8 @@ transform = torchvision.transforms.Compose([
     torchvision.transforms.CenterCrop((64, 64)),
 ])
 
-train_data = celeba.CelebA(root='D:/Datasets', download=False, transform=transform, target_attributes="Bald")
-train_iter = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True)
+train_data = celeba.CelebA(root='C:/Datasets', download=False, transform=transform, target_attributes="Bald")
+train_iter = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True, prefetch_factor=2, num_workers=4)
 delete_rectangle = DeleteRandomRectangle()
 
 ############## loading models ###################
@@ -35,7 +36,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 net = cVAE((3, 64, 64), 2, nhid=100, ncond=16)
 net.to(device)
 # print(net)
-save_name = "cVAE.pt"
+save_name = "./models/weights/cVAE.pt"
 
 ############### training #########################
 
@@ -59,7 +60,7 @@ if os.path.exists(save_name):
         for g in optimizer.param_groups:
             g['lr'] = lr
 
-max_epochs = 7
+max_epochs = 100
 early_stop = EarlyStop(patience=20, save_name=save_name)
 net = net.to(device)
 

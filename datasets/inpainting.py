@@ -4,6 +4,7 @@ import torchvision
 from PIL import Image
 from matplotlib import pyplot as plt
 from torchvision.transforms import RandomErasing
+from torchvision.transforms.functional import erase
 
 class Inpainting():
 
@@ -39,6 +40,22 @@ class DeleteRandomRectangle(nn.Module):
         mask = (x == 0).type(torch.int8)
         return x, mask
 
+
+class DeleteRectangle(nn.Module):
+
+    def __init__(self, i, j, h, w):
+        super(DeleteRectangle, self).__init__()
+        self.i = i
+        self.j = j
+        self.h = h
+        self.w = w
+
+    def forward(self, x):
+        x = x.squeeze(0)
+        x = erase(x, self.i, self.j, self.h, self.w, v = 0)
+        x = x.unsqueeze(0)
+        mask = (x == 0).type(torch.int8)
+        return x, mask
 
 if __name__ == '__main__':
     randomErase = torchvision.transforms.RandomErasing(p=1)
