@@ -2,8 +2,8 @@ import torch
 import torchvision
 import os, time, tqdm
 
-from datasets.inpainting import DeleteRandomRectangle
-from models.cvae import loss, cVAE
+from datasets.inpainting import DeleteRandomRectangle, DeleteRectangleBatch
+from models.cvae2 import loss, cVAE
 from utils import EarlyStop
 from datasets import celeba
 from torch.utils.tensorboard import SummaryWriter
@@ -25,15 +25,21 @@ transform = torchvision.transforms.Compose([
     torchvision.transforms.CenterCrop((64, 64)),
 ])
 
-train_data = celeba.CelebA(root='C:/Datasets', download=False, transform=transform, target_attributes="Bald")
-train_iter = torch.utils.data.DataLoader(train_data, batch_size=32, shuffle=True, prefetch_factor=2, num_workers=4)
-delete_rectangle = DeleteRandomRectangle()
+train_data = celeba.CelebA(root='C:/Datasets', download=False, transform=transform, target_attributes="Smiling")
+train_iter = torch.utils.data.DataLoader(train_data, batch_size=128, shuffle=True)
+
+#delete_rectangle = DeleteRandomRectangle()
+x1 = 50
+y1 = 21
+x2 = 65
+y2 = 45
+delete_rectangle = DeleteRectangleBatch(x1,y1,x2-x1,y2-y1)
 
 ############## loading models ###################
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-net = cVAE((3, 64, 64), 2, nhid=100, ncond=16)
+net = cVAE((3, 64, 64), 2, nhid=512, ncond=16)
 net.to(device)
 # print(net)
 save_name = "./models/weights/cVAE.pt"
@@ -61,7 +67,7 @@ if os.path.exists(save_name):
             g['lr'] = lr
 
 max_epochs = 100
-early_stop = EarlyStop(patience=20, save_name=save_name)
+early_stop = EarlyStop(patience=20, save_name=save_name, verbose=True)
 net = net.to(device)
 
 print("training on ", device)

@@ -57,6 +57,21 @@ class DeleteRectangle(nn.Module):
         mask = (x == 0).type(torch.int8)
         return x, mask
 
+class DeleteRectangleBatch(nn.Module):
+
+    def __init__(self, i, j, h, w):
+        super(DeleteRectangleBatch, self).__init__()
+        self.i = i
+        self.j = j
+        self.h = h
+        self.w = w
+
+    def forward(self, x):
+        x = erase(x, self.i, self.j, self.h, self.w, v = 0)
+        mask = (x == 0).type(torch.int8)
+        return x, mask
+
+
 if __name__ == '__main__':
     randomErase = torchvision.transforms.RandomErasing(p=1)
 

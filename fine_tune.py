@@ -4,16 +4,18 @@ import torchvision
 import tqdm
 
 from datasets import celeba
-from models.cvae import cVAE
+from models.cvae2 import cVAE
 from datasets.inpainting import DeleteRandomRectangle
 from torch.utils.tensorboard import SummaryWriter
+
+from utils import EarlyStop
 
 writer = SummaryWriter()
 
 BCE_loss = nn.BCELoss(reduction='sum')
 delete_rectangle = DeleteRandomRectangle()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-batch_size = 32
+batch_size = 128
 
 def crop(x, low, high):
     x[x <= low] = low
@@ -103,13 +105,13 @@ def train_generator(batch, batch_cropped, attr, discriminator, generator, optimi
 
 
 def save_models(generator, discriminator, epoch):
-    torch.save({"net": discriminator.state_dict()}, f"./models/weights/discriminator.pt")
-    torch.save({"net": generator.state_dict()},f"./models/weights/cVAE_finetuned.pt")
+    torch.save({"net": discriminator.state_dict()}, f"./models/weights/discriminator-epoch{epoch}.pt")
+    torch.save({"net": generator.state_dict()},f"./models/weights/cVAE2_finetuned-epoch{epoch}.pt")
 
 
 def main_train_like_a_gan():
-    cvae = cVAE((3, 64, 64), 2, nhid=100, ncond=16)
-    checkpoint = torch.load("./cVAE.pt", map_location=device)
+    cvae = cVAE((3, 64, 64), 2, nhid=512, ncond=16)
+    checkpoint = torch.load("./models/weights/cVAE.pt", map_location=device)
     cvae.load_state_dict(checkpoint["net"])
     cvae.to(device)
 
@@ -122,9 +124,10 @@ def main_train_like_a_gan():
     discriminator_optimizer = torch.optim.Adam(discriminator.parameters(), lr=0.01, weight_decay=0.0001)
     generator_optimizer = torch.optim.Adam(generator.parameters(), lr=0.01, weight_decay=0.0001)
 
-    epochs = 5
+    epochs = 100
     iteration = 0
     discriminator_warmup_iterations = len(train_data) / batch_size * 0.05
+
     for epoch in range(epochs):
         for X, y in tqdm.tqdm(train_iter, ncols=50):
             iteration += 1
@@ -140,6 +143,9 @@ def main_train_like_a_gan():
                 continue
 
             train_generator(X, X_cropped, y, discriminator, generator, generator_optimizer, iteration)
+
+            if epoch % 10 == 0:
+                save_models(generator, discriminator, epoch)
 
         save_models(generator, discriminator, epoch)
 
