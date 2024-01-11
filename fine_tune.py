@@ -8,13 +8,11 @@ from models.cvae2 import cVAE
 from datasets.inpainting import DeleteRandomRectangle, DeleteSmilingRectangle
 from torch.utils.tensorboard import SummaryWriter
 
-from utils import EarlyStop
-
 writer = SummaryWriter()
 
 BCE_loss = nn.BCELoss(reduction='sum')
 
-delete_rectangle = DeleteSmilingRectangle()
+delete_rectangle = DeleteRandomRectangle()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 batch_size = 128
@@ -32,7 +30,7 @@ transform = torchvision.transforms.Compose([
     torchvision.transforms.CenterCrop((64, 64)),
 ])
 
-train_data = celeba.CelebA(root='C:/Datasets', download=False, transform=transform)
+train_data = celeba.CelebA(root='C:/Datasets', download=False, transform=transform, target_attributes=None)
 train_iter = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
 
 
@@ -113,7 +111,7 @@ def save_models(generator, discriminator, epoch):
 
 def main_train_like_a_gan():
     cvae = cVAE((3, 64, 64), 2, nhid=512, ncond=16)
-    checkpoint = torch.load("./models/weights/cVAE.pt", map_location=device)
+    checkpoint = torch.load("./models/weights/general-inpainter-baseline.pt", map_location=device)
     cvae.load_state_dict(checkpoint["net"])
     cvae.to(device)
 

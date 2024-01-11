@@ -26,7 +26,7 @@ class CelebA(VisionDataset):
         root (string): Root directory where images are downloaded to.
         split (string): One of {'train', 'valid', 'test', 'all'}.
             Accordingly dataset is selected.
-        target_attributes (string or list): List of attributes to provide as target
+        target_attributes (string or list): List of attributes to provide as target. If none are provided, dataset will always return label 0.
         transform (callable, optional): A function/transform that  takes in an PIL image
             and returns a transformed version. E.g, ``transforms.PILToTensor``
         target_transform (callable, optional): A function/transform that takes in the
@@ -57,7 +57,9 @@ class CelebA(VisionDataset):
     ) -> None:
         super().__init__(root, transform=transform, target_transform=target_transform)
         self.split = split
-        if isinstance(target_attributes, list):
+        if target_attributes is None:
+            self.target_attributes = None
+        elif isinstance(target_attributes, list):
             self.target_attributes = target_attributes
         else:
             self.target_attributes = [target_attributes]
@@ -139,12 +141,15 @@ class CelebA(VisionDataset):
         X = PIL.Image.open(os.path.join(self.root, self.base_folder, "img_align_celeba", self.filename[index]))
 
         target: Any = []
-        for attribute in self.target_attributes:
-            if attribute in self.attr_names:
-                attribute_index = self.attr_names.index(attribute)
-                target.append(self.attr[index, attribute_index])
-            else:
-                raise ValueError(f'Target attribute "{attribute}" is not recognized.')
+        if self.target_attributes is None:
+            target.append(0)
+        else:
+            for attribute in self.target_attributes:
+                if attribute in self.attr_names:
+                    attribute_index = self.attr_names.index(attribute)
+                    target.append(self.attr[index, attribute_index])
+                else:
+                    raise ValueError(f'Target attribute "{attribute}" is not recognized.')
 
         if self.transform is not None:
             X = self.transform(X)
