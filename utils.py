@@ -1,8 +1,6 @@
 import torch
 import numpy as np
-import time
-from tqdm import tqdm
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 class EarlyStop:
     """Used to early stop the training if validation loss doesn't improve after a given patience."""

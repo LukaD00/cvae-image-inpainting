@@ -2,7 +2,7 @@ import torch
 import torchvision
 import os, time, tqdm
 
-from datasets.inpainting import DeleteRandomRectangle, DeleteSmilingRectangle
+from datasets.inpainting import DeleteRandomRectangle, DeleteSmilingRectangle, DeleteRandomBigRectangle
 from models.cvae2 import loss, cVAE
 from utils import EarlyStop
 from datasets import celeba
@@ -25,11 +25,12 @@ transform = torchvision.transforms.Compose([
     torchvision.transforms.CenterCrop((64, 64)),
 ])
 
-train_data = celeba.CelebA(root='C:/Datasets', download=False, transform=transform, target_attributes=None)
+train_data = celeba.CelebA(root='C:/Datasets', download=False, transform=transform, target_attributes="Eyeglasses")
 train_iter = torch.utils.data.DataLoader(train_data, batch_size=128, shuffle=True)
 
-delete_rectangle = DeleteRandomRectangle()
+#delete_rectangle = DeleteRandomRectangle()
 #delete_rectangle = DeleteSmilingRectangle()
+delete_rectangle = DeleteRandomBigRectangle()
 
 ############## loading models ###################
 

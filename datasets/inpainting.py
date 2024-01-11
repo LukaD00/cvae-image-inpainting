@@ -56,6 +56,18 @@ class DeleteRectangle(nn.Module):
         return x, mask
 
 
+class DeleteRandomBigRectangle(nn.Module):
+
+    def __init__(self):
+        super(DeleteRandomBigRectangle, self).__init__()
+        self.random_erasing = RandomErasing(p=1, scale=(0.08, 0.14), inplace=False)
+
+    def forward(self, x):
+        x = self.random_erasing(x)
+        mask = (x == 0).type(torch.int8)
+        return x, mask
+
+
 class DeleteSmilingRectangle(DeleteRectangle):
 
     def __init__(self):
