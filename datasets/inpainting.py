@@ -51,25 +51,16 @@ class DeleteRectangle(nn.Module):
         self.w = w
 
     def forward(self, x):
-        x = x.squeeze(0)
-        x = erase(x, self.i, self.j, self.h, self.w, v = 0)
-        x = x.unsqueeze(0)
-        mask = (x == 0).type(torch.int8)
-        return x, mask
-
-class DeleteRectangleBatch(nn.Module):
-
-    def __init__(self, i, j, h, w):
-        super(DeleteRectangleBatch, self).__init__()
-        self.i = i
-        self.j = j
-        self.h = h
-        self.w = w
-
-    def forward(self, x):
         x = erase(x, self.i, self.j, self.h, self.w, v = 0)
         mask = (x == 0).type(torch.int8)
         return x, mask
+
+
+class DeleteSmilingRectangle(DeleteRectangle):
+
+    def __init__(self):
+        super(DeleteSmilingRectangle, self).__init__(50, 21, 65-50, 45-21)
+
 
 
 if __name__ == '__main__':

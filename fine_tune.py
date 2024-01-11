@@ -5,7 +5,7 @@ import tqdm
 
 from datasets import celeba
 from models.cvae2 import cVAE
-from datasets.inpainting import DeleteRandomRectangle, DeleteRectangleBatch
+from datasets.inpainting import DeleteRandomRectangle, DeleteSmilingRectangle
 from torch.utils.tensorboard import SummaryWriter
 
 from utils import EarlyStop
@@ -14,11 +14,7 @@ writer = SummaryWriter()
 
 BCE_loss = nn.BCELoss(reduction='sum')
 
-x1 = 50
-y1 = 21
-x2 = 65
-y2 = 45
-delete_rectangle = DeleteRectangleBatch(x1,y1,x2-x1,y2-y1)
+delete_rectangle = DeleteSmilingRectangle()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 batch_size = 128
