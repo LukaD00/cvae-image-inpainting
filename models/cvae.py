@@ -32,21 +32,19 @@ class MLP(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, shape, nhid=16, ncond=0):
+    def __init__(self, shape, nhid=512, ncond=0):
         super(Encoder, self).__init__()
         c, h, w = shape
-        ww = ((w - 8) // 2 - 4) // 2
-        hh = ((h - 8) // 2 - 4) // 2
-        self.encode = nn.Sequential(nn.Conv2d(c, 16, 5, padding=0), nn.BatchNorm2d(16), nn.ReLU(inplace=True),
-                                    nn.Conv2d(16, 32, 5, padding=0), nn.BatchNorm2d(32), nn.ReLU(inplace=True),
-                                    nn.MaxPool2d(2, 2),
-                                    nn.Conv2d(32, 64, 3, padding=0), nn.BatchNorm2d(64), nn.ReLU(inplace=True),
-                                    nn.Conv2d(64, 64, 3, padding=0), nn.BatchNorm2d(64), nn.ReLU(inplace=True),
-                                    nn.MaxPool2d(2, 2),
-                                    Flatten(), MLP([ww * hh * 64, 256, 128])
-                                    )
-        self.calc_mean = MLP([128 + ncond, 64, nhid], last_activation=False)
-        self.calc_logvar = MLP([128 + ncond, 64, nhid], last_activation=False)
+        self.encode = nn.Sequential(
+            nn.Conv2d(c, 64, 5, 2), nn.BatchNorm2d(64), nn.ReLU(inplace=True),  
+            nn.Conv2d(64, 128, 5, 2), nn.BatchNorm2d(128), nn.ReLU(inplace=True), 
+            nn.Conv2d(128, 256, 5, 2), nn.BatchNorm2d(256), nn.ReLU(inplace=True), 
+            nn.Conv2d(256, 512, 5, 2), nn.BatchNorm2d(512), nn.ReLU(inplace=True), 
+            Flatten() 
+        )
+        flat_dimension = 512 # TODO hardcoded for now...
+        self.calc_mean = MLP([flat_dimension + ncond, nhid], last_activation=False) # nhid
+        self.calc_logvar = MLP([flat_dimension + ncond, nhid], last_activation=False) # nhid
 
     def forward(self, x, y=None):
         x = self.encode(x)
@@ -55,39 +53,27 @@ class Encoder(nn.Module):
         else:
             return self.calc_mean(torch.cat((x, y), dim=1)), self.calc_logvar(torch.cat((x, y), dim=1))
 
-
+        
 class Decoder(nn.Module):
-    def __init__(self, shape, nhid=16, ncond=0):
+    def __init__(self, shape, nhid=512, ncond=0):
         super(Decoder, self).__init__()
-        self.shape = shape
+        c, h, w = shape
+        h2, h4, h8, h16 = int(h/2), int(h/4), int(h/8), int(h/16) 
 
         self.latent_size = nhid + ncond
         self.main = nn.Sequential(
-            nn.ConvTranspose2d(self.latent_size, 512, 4, 1, 0),
-            nn.BatchNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.ConvTranspose2d(512, 256, 4, 2, 1),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.ConvTranspose2d(256, 128, 4, 2, 1),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.ConvTranspose2d(128, 64, 4, 2, 1),
-            nn.BatchNorm2d(64),
-            nn.LeakyReLU(0.2, inplace=True),
-
-            nn.ConvTranspose2d(64, 3, 4, 2, 1),
-            nn.Sigmoid(),
+            nn.Linear(self.latent_size, 256 * h8 * h8), nn.Unflatten(1, (256, h8, h8)), nn.BatchNorm2d(256), # 256 x h/8 x h/8
+            nn.ConvTranspose2d(256, 256, 2, 2), nn.BatchNorm2d(256), nn.ReLU(inplace=True), # 256 x h/4 x h/4
+            nn.ConvTranspose2d(256, 128, 2, 2), nn.BatchNorm2d(128), nn.ReLU(inplace=True), # 128 x h/2 x h/2,
+            nn.ConvTranspose2d(128, 32, 2, 2), nn.BatchNorm2d(32), nn.ReLU(inplace=True), # 32 x h x h,
+            nn.ConvTranspose2d(32, c, 5, 1, 2), nn.Sigmoid() # 3 x h x h
         )
 
     def forward(self, z, y=None):
         if y is not None:
             z = torch.cat((z, y), dim=1)
 
-        z = z.view(-1, self.latent_size, 1, 1)
+        #z = z.view(-1, self.latent_size, 1, 1)
         return self.main(z)
 
 

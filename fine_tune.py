@@ -4,7 +4,7 @@ import torchvision
 import tqdm
 
 from datasets import celeba
-from models.cvae2 import cVAE
+from models.cvae import cVAE
 from datasets.inpainting import DeleteRandomRectangle, DeleteSmilingRectangle, DeleteRandomBigRectangle
 from torch.utils.tensorboard import SummaryWriter
 
@@ -31,7 +31,7 @@ transform = torchvision.transforms.Compose([
     torchvision.transforms.CenterCrop((64, 64)),
 ])
 
-train_data = celeba.CelebA(root='C:/Datasets', download=False, transform=transform, target_attributes="Eyeglasses")
+train_data = celeba.CelebA(root='C:/Datasets', download=False, transform=transform, target_attributes=None)
 train_iter = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
 
 
@@ -112,7 +112,7 @@ def save_models(generator, discriminator, epoch):
 
 def main_train_like_a_gan():
     cvae = cVAE((3, 64, 64), 2, nhid=512, ncond=16)
-    checkpoint = torch.load("./models/weights/glasses-remover-baseline.pt", map_location=device)
+    checkpoint = torch.load("./models/weights/general-inpainter-big-baseline.pt", map_location=device)
     cvae.load_state_dict(checkpoint["net"])
     cvae.to(device)
 
@@ -148,8 +148,11 @@ def main_train_like_a_gan():
             if epoch % 10 == 0:
                 save_models(generator, discriminator, epoch)
 
-        save_models(generator, discriminator, epoch)
+        
+        if epoch % 10 == 0:
+            save_models(generator, discriminator, epoch)
 
+    save_models(generator, discriminator, epoch)
     writer.close()
 
 
