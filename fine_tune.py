@@ -112,7 +112,7 @@ def save_models(generator, discriminator, epoch):
 
 def main_train_like_a_gan():
     cvae = cVAE((3, 64, 64), 2, nhid=512, ncond=16)
-    checkpoint = torch.load("./models/weights/general-inpainter-big-baseline.pt", map_location=device)
+    checkpoint = torch.load("./models/weights/cVAE.pt", map_location=device)
     cvae.load_state_dict(checkpoint["net"])
     cvae.to(device)
 
