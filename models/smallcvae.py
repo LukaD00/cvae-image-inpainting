@@ -91,9 +91,9 @@ class Decoder(nn.Module):
         return self.main(z)
 
 
-class cVAE(nn.Module):
+class Small_cVAE(nn.Module):
     def __init__(self, shape, nclass, nhid=16, ncond=16):
-        super(cVAE, self).__init__()
+        super(Small_cVAE, self).__init__()
         self.dim = nhid
         self.encoder = Encoder(shape, nhid)
         self.decoder = Decoder(shape, nhid, ncond=ncond)
