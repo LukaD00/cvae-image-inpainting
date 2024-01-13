@@ -25,7 +25,7 @@ transform = torchvision.transforms.Compose([
     torchvision.transforms.CenterCrop((64, 64)),
 ])
 
-train_data = celeba.CelebA(root='C:/Datasets', download=False, transform=transform, target_attributes="Smiling")
+train_data = celeba.CelebA(root='.', download=False, transform=transform, target_attributes="Smiling")
 train_iter = torch.utils.data.DataLoader(train_data, batch_size=128, shuffle=True)
 
 delete_rectangle = DeleteSmilingRectangle()

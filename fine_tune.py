@@ -31,7 +31,7 @@ transform = torchvision.transforms.Compose([
     torchvision.transforms.CenterCrop((64, 64)),
 ])
 
-train_data = celeba.CelebA(root='C:/Datasets', download=False, transform=transform, target_attributes=None)
+train_data = celeba.CelebA(root='.', download=False, transform=transform, target_attributes=None)
 train_iter = torch.utils.data.DataLoader(train_data, batch_size=batch_size, shuffle=True)
 
 
